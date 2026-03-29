@@ -1,0 +1,17 @@
+[project]
+name = "ipynb-jjsm-tools"
+version = "0.1.0"
+description = "Utility tools for notebooks and data workflows"
+authors = [{name = "Juan Sanchez"}]
+dependencies = [
+    "pandas",
+    "fsspec",
+    "s3fs"
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
