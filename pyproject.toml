@@ -1,8 +1,8 @@
 [project]
 name = "ipynb-jjsm-tools"
-version = "0.1.0"
+version = "0.2.0"
 description = "Utility tools for notebooks and data workflows"
-authors = [{name = "Juan Sanchez"}]
+authors = [{name = "Juan José Sanchez Medina"}]
 dependencies = [
     "pandas",
     "fsspec",
