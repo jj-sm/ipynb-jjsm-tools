@@ -1,3 +1,4 @@
+from . import dirs
 from .dirs import create_dirs
 
 __all__ = [
