@@ -44,7 +44,9 @@ class S3Client:
 
         self._filesystem = None
 
-    def get_csv(self, filename, bucket=None, folder=None, output="pd"):
+    def get_csv(
+        self, filename, bucket=None, folder: str | list[str] | None = None, output="pd"
+    ):
         """
         Load a CSV file from S3.
 
@@ -54,6 +56,9 @@ class S3Client:
 
         bucket = bucket or self.bucket
         folder = folder or self.folder
+
+        if isinstance(folder, list):
+            folder = "/".join(part for part in folder if part)
 
         if not bucket or not folder:
             raise ValueError("Bucket and folder must be specified.")
