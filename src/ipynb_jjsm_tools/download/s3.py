@@ -164,4 +164,47 @@ class S3Client:
             for f in deleted:
                 f.unlink()
             print(f">> Cache cleared: {len(deleted)} file(s) removed from {self.cache_dir}")
+
+    def download(self, filename, bucket=None, folder=None, dest=None):
+        """
+        Download a file from S3 as-is to a local path.
+
+        Parameters
+        ----------
+        filename : str
+            Remote filename (e.g. 'template.jpg').
+        dest : str or Path, optional
+            Local destination path or directory.
+            - If a directory, saves filename inside it.
+            - If None, uses cache_dir if set, else current working directory.
+        """
+        s3_path = self._resolve_path(filename, bucket, folder)
+
+        if dest is None:
+            dest = self.cache_dir or Path.cwd()
+
+        dest = Path(dest)
+        local_path = dest / filename if dest.is_dir() else dest
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if local_path.exists():
+            print(f">> Already exists: {local_path} (use force_refresh=True to overwrite)")
+            return local_path
+
+        last_error = None
+        for attempt in range(self.retries + 1):
+            try:
+                with self._filesystem.open(s3_path, "rb") as src, local_path.open("wb") as dst:
+                    dst.write(src.read())
+                print(f">> Downloaded: {filename} → {local_path}")
+                return local_path
+            except Exception as e:
+                last_error = e
+                if attempt < self.retries:
+                    wait = self.backoff_seconds * (2**attempt)
+                    print(f">> Attempt {attempt + 1} failed for {filename}: {e}. Retrying in {wait:.1f}s…")
+                    time.sleep(wait)
+
+        print(f">> Error downloading {filename} after {self.retries + 1} attempts: {last_error}")
+        return None
             
