@@ -1,5 +1,5 @@
 import time
-
+from pathlib import Path
 import fsspec
 import pandas as pd
 
@@ -14,7 +14,15 @@ class S3Client:
         folder=None,
         retries=3,
         backoff_seconds=0.5,
+        cache_dir=None,
     ):
+        """
+        Parameters
+        ----------
+        cache_dir : str or Path, optional
+            Local directory for caching downloaded CSVs.
+            If None, caching is disabled.
+        """
         if not all([access_key, secret_key, endpoint_url]):
             raise ValueError("Missing S3 credentials.")
 
@@ -22,6 +30,10 @@ class S3Client:
         self.folder = folder
         self.retries = max(0, int(retries))
         self.backoff_seconds = max(0.0, float(backoff_seconds))
+        self.cache_dir = Path(cache_dir) if cache_dir else None
+
+        if self.cache_dir:
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         self._storage_options = {
             "key": access_key,
@@ -44,49 +56,112 @@ class S3Client:
 
         return f"s3://{bucket}/{folder}/{filename}"
 
-    def get_csv(
-        self, filename, bucket=None, folder: str | list[str] | None = None, output="pd"
-    ):
-        """
-        Load a CSV file from S3.
+    def _cache_path(self, filename):
+        """Returns the local cache path for a filename, or None if caching is off."""
+        if self.cache_dir is None:
+            return None
+        return self.cache_dir / filename
 
-        Parameters
-        ----------
-        output : {"pd", "pl"}
-        """
-        output = (output or "pd").lower()
-        if output not in {"pd", "pl"}:
-            raise ValueError("output must be 'pd' or 'pl'.")
-
-        s3_path = self._resolve_path(filename, bucket, folder)
-
+    def _load_from_s3(self, s3_path, filename):
+        """Pull a CSV from S3 with retries. Returns a DataFrame or raises."""
         last_error = None
         for attempt in range(self.retries + 1):
             try:
                 with self._filesystem.open(s3_path) as f:
                     df = pd.read_csv(f)
-
-                print(f">> Loaded: {filename}")
-
-                if output == "pl":
-                    try:
-                        import polars as pl
-                    except Exception as e:
-                        raise ImportError("polars is required when output='pl'.") from e
-                    return pl.from_pandas(df)
-
                 return df
-
             except Exception as e:
                 last_error = e
                 if attempt < self.retries:
                     wait = self.backoff_seconds * (2**attempt)
-                    print(
-                        f">> Attempt {attempt + 1} failed for {filename}: {e}. Retrying in {wait:.1f}s…"
-                    )
+                    print(f">> Attempt {attempt + 1} failed for {filename}: {e}. Retrying in {wait:.1f}s…")
                     time.sleep(wait)
 
-        print(
-            f">> Error loading {filename} after {self.retries + 1} attempts: {last_error}"
-        )
-        return None
+        raise RuntimeError(
+            f"Failed to load '{filename}' after {self.retries + 1} attempts: {last_error}"
+        ) from last_error
+
+    def get_csv(
+        self,
+        filename,
+        bucket=None,
+        folder: str | list[str] | None = None,
+        output="pd",
+        force_refresh=False,
+    ):
+        """
+        Load a CSV file, using the local cache when available.
+
+        Parameters
+        ----------
+        output : {"pd", "pl"}
+        force_refresh : bool
+            If True, ignore the local cache and re-download from S3,
+            overwriting the cached copy.
+        """
+        output = (output or "pd").lower()
+        if output not in {"pd", "pl"}:
+            raise ValueError("output must be 'pd' or 'pl'.")
+
+        local_path = self._cache_path(filename)
+        s3_path = self._resolve_path(filename, bucket, folder)
+
+        try:
+            # --- Serve from cache ---
+            if local_path and local_path.exists() and not force_refresh:
+                print(f">> Cache hit: {filename} (from {local_path})")
+                df = pd.read_csv(local_path)
+
+            # --- Download from S3 ---
+            else:
+                if force_refresh and local_path and local_path.exists():
+                    print(f">> Force refresh: {filename}")
+                else:
+                    print(f">> Cache miss: {filename} — downloading from S3…")
+
+                df = self._load_from_s3(s3_path, filename)
+                print(f">> Loaded: {filename}")
+
+                if local_path:
+                    df.to_csv(local_path, index=False)
+                    print(f">> Cached: {filename} → {local_path}")
+
+        except Exception as e:
+            print(f">> Error loading {filename}: {e}")
+            return None
+
+        if output == "pl":
+            try:
+                import polars as pl
+            except Exception as e:
+                raise ImportError("polars is required when output='pl'.") from e
+            return pl.from_pandas(df)
+
+        return df
+
+    def refresh(self, filename, bucket=None, folder=None, output="pd"):
+        """
+        Force re-download a file from S3, overwriting the local cache.
+
+        Shorthand for get_csv(..., force_refresh=True).
+        """
+        return self.get_csv(filename, bucket=bucket, folder=folder, output=output, force_refresh=True)
+
+    def clear_cache(self, filename=None):
+        if not self.cache_dir:
+            print(">> No cache_dir configured.")
+            return
+
+        if filename:
+            path = self._cache_path(filename)
+            if path and path.exists():
+                path.unlink()
+                print(f">> Cache cleared: {filename}")
+            else:
+                print(f">> Not in cache: {filename}")
+        else:
+            deleted = list(self.cache_dir.glob("*.csv"))
+            for f in deleted:
+                f.unlink()
+            print(f">> Cache cleared: {len(deleted)} file(s) removed from {self.cache_dir}")
+            
