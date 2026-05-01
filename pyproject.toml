@@ -1,6 +1,6 @@
 [project]
 name = "ipynb-jjsm-tools"
-version = "0.2.3"
+version = "0.2.5"
 description = "Utility tools for notebooks and data workflows"
 authors = [{name = "Juan José Sanchez Medina"}]
 dependencies = [
