@@ -184,7 +184,7 @@ class S3Client:
             dest = self.cache_dir or Path.cwd()
 
         dest = Path(dest)
-        local_path = dest / filename if dest.is_dir() else dest
+        local_path = dest / filename if not dest.suffix else dest
         local_path.parent.mkdir(parents=True, exist_ok=True)
 
         if local_path.exists():
