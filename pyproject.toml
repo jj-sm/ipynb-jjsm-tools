@@ -1,17 +1,46 @@
 [project]
 name = "ipynb-jjsm-tools"
-version = "0.3"
+version = "0.3.1"
 description = "Utility tools for notebooks and data workflows"
 authors = [{name = "Juan José Sanchez Medina"}]
+readme = "README.md"
+requires-python = ">=3.10"
+
 dependencies = [
-    "pandas",
+    "astropy",
+    "cmcrameri",
     "fsspec",
-    "s3fs",
-    "cmcrameri>=1.10",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "photutils",
+    "polars",
+    "scipy",
+]
+
+[project.optional-dependencies]
+notebook = [
+    "ipykernel",
+    "ipywidgets",
+    "notebook",
+    "jupyterlab",
+]
+
+lab = [
+    "astroquery",
+    "astroscrappy",
+    "ccdproc",
+    "reproject",
+    "sep",
+    "scikit-image",
+]
+
+full = [
+    "ipynb-jjsm-tools[notebook,lab]",
 ]
 
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
