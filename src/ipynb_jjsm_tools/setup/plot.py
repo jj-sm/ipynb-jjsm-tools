@@ -8,7 +8,14 @@ _PLOT_BASE_STYLE = {
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
     "legend.fontsize": 9,
+    'xtick.direction': 'in',
+    'ytick.direction': 'in',
+    'xtick.top': True,
+    'ytick.right': True,
+    'xtick.minor.visible': True,
+    'ytick.minor.visible': True,
 }
+
 
 
 def _latex_toolchain_status():
