@@ -1,4 +1,5 @@
-"""Color-magnitude / HR diagram plotting. One generic scatter function
+"""
+Color-magnitude, HR diagram plotting, a generic scatter function
 covers both cases: a CMD plots (color, apparent mag); an HR diagram is
 the same plot with an absolute magnitude or temperature/color axis.
 """

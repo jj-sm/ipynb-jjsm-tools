@@ -1,6 +1,5 @@
-"""Display FITS-like image arrays (2D data or RGB stacks) with sane
-astronomy defaults: log-stretched imshow, WCS-aware axes, dual PNG/PDF
-saving, and an optional side-by-side TeX vs. mathtext preview.
+"""
+Display FITS-like image arrays (2D data or RGB stacks)
 """
 
 from pathlib import Path
@@ -13,7 +12,7 @@ try:
     from cmcrameri import cm as _cmc
 
     _DEFAULT_CMAP = _cmc.batlowK
-except Exception:  # pragma: no cover - cmcrameri is an optional dependency
+except Exception:  # pragma: no cover - cmcrameri is optional
     _DEFAULT_CMAP = "viridis"
 
 
@@ -39,6 +38,7 @@ def plot_image(
     all_axis=True,
     vmin_pct=10,
     vmax_pct=99.9,
+    colorbar_kwargs: dict | None = None,
     **kwargs,
 ):
     """
@@ -103,7 +103,7 @@ def plot_image(
         image = ax.imshow(image_data, origin="lower", **kwargs)
     else:
         image = ax.imshow(image_data, cmap=cmap, norm=norm, origin="lower", **kwargs)
-        fig.colorbar(image, label=colorbar_label, shrink=0.805)
+        fig.colorbar(image, label=colorbar_label, **colorbar_kwargs if colorbar_kwargs else {})
 
     if wcs is not None:
         ax.set_xlabel("RA", fontsize=15)
@@ -129,18 +129,7 @@ def plot_image(
 
 def plot_image_both_styles(image_data, filename=None, graphs_path=None, **plot_kwargs):
     """
-    Render the same image twice — once with LaTeX text rendering active,
-    once with mathtext-only — using `setup.plot.activate_tex` to toggle
-    `rcParams['text.usetex']` in between. Useful for previewing how a
-    figure will look in a report vs. a quick-look notebook.
-
-    Falls back gracefully (both renders use mathtext) if a LaTeX
-    toolchain isn't available.
-
-    Returns
-    -------
-    dict with keys 'tex' and 'mathtext', each mapping to
-    (fig, ax, activate_tex_status).
+    Fallback to check whether TeX is available, and plot the image depending on it.
     """
     from ..setup.plot import activate_tex
 
