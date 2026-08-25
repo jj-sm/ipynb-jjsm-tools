@@ -27,6 +27,12 @@ def gaussian_1d(x, amp, cen, sigma, offset):
     return amp * np.exp(-0.5 * ((x - cen) / sigma) ** 2) + offset
 
 
+
+def _circle_xy(cx, cy, r, n=100):
+    theta = np.linspace(0, 2 * np.pi, n)
+    return cx + r * np.cos(theta), cy + r * np.sin(theta)
+
+
 def _fit_profile(pixel_coords, profile, sigma_guess):
     if _curve_fit is None:
         return None
@@ -271,6 +277,9 @@ def plot_star_profile(
         fig.savefig(f"{base}.pdf", format="pdf", bbox_inches="tight")
 
     return fig, fit_results
+
+
+
 
 
 def plot_star_profile_3d(
