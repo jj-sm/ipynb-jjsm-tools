@@ -64,6 +64,7 @@ def plot_star_profile(
     xlabel=r"Píxel $x$",
     ylabel=r"Píxel $y$",
     show_fwhm=True,
+    print_fwhm=True,
 ):
     """
     Joint plot of a star's cutout plus its X and Y pixel-value profiles
@@ -203,6 +204,9 @@ def plot_star_profile(
                 label=rf"$\textup{{FWHM}}$",
             )
 
+        if print_fwhm:
+            print(f"FWHM X: {fwhm_x:.4f} px")
+
         if true_popt is not None:
             ax_bot.plot(
                 xf, gaussian_1d(xf, *true_popt), color="lime", linewidth=1.3,
@@ -244,6 +248,8 @@ def plot_star_profile(
                 # label=rf"$\textup{{FWHM}}={fwhm_y:.2f}$ px",
                 label=rf"$\textup{{FWHM}}$",
             )
+        if print_fwhm:
+            print(f"FWHM Y: {fwhm_y:.4f} px")
 
         if true_popt is not None:
             true_popt_y = [true_popt[0], float(py), true_popt[2], true_popt[3]]
@@ -270,6 +276,8 @@ def plot_star_profile(
     plt.setp(ax_left.get_yticklabels(), fontsize=8)
 
     ax_void.text(0.3, 0.3, flux_label, ha="center", va="center", fontsize=9, transform=ax_void.transAxes, rotation=45)
+
+
 
     if filename:
         base = Path(graphs_path) / filename if graphs_path else Path(filename)
