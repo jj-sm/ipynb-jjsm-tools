@@ -15,7 +15,7 @@ def create_dirs(path, data="data", output="out", cache="cache"):
     os.makedirs(notebooks, exist_ok=True)
 
 
-@deprecated(reason="Use set_project_root(root) instead, passing the root path directly.")
+@deprecated("Use set_project_root(root) instead, passing the root path directly.")
 def add_project_root(start=None, marker=".root_ident", verbose=True, chdir=True):
     """
     Walk up from `start` looking for `marker`, prepend the first
