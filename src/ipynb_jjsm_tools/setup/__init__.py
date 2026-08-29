@@ -7,6 +7,7 @@ __all__ = [
     "dirs",
     "create_dirs",
     "add_project_root",
+    "set_project_root"
     "activate_tex",
     "info_log",
 ]
