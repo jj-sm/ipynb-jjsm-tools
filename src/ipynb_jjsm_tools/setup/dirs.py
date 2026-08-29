@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from warnings import deprecated
 
 def create_dirs(path, data="data", output="out", cache="cache"):
     path = Path(path)
@@ -13,6 +14,8 @@ def create_dirs(path, data="data", output="out", cache="cache"):
     os.makedirs(output, exist_ok=True)
     os.makedirs(notebooks, exist_ok=True)
 
+
+@deprecated(reason="Use set_project_root(root) instead, passing the root path directly.")
 def add_project_root(start=None, marker=".root_ident", verbose=True, chdir=True):
     """
     Walk up from `start` looking for `marker`, prepend the first
@@ -91,3 +94,45 @@ def add_project_root(start=None, marker=".root_ident", verbose=True, chdir=True)
         )
 
     return None
+
+
+def set_project_root(root, verbose=True, chdir=True):
+    """
+    Prepend `root` to `sys.path` and (by default) change the working directory
+    to it, so imports and relative paths work regardless of where the kernel
+    started.
+
+    Parameters
+    ----------
+    root : str or Path
+        The project root directory to register.
+    verbose : bool
+        Print a confirmation message when the path is added / cwd is changed.
+    chdir : bool
+        If True (default), also change the process working directory to `root`.
+
+    Returns
+    -------
+    Path
+        The resolved absolute path that was registered.
+
+    Raises
+    ------
+    NotADirectoryError
+        If `root` does not point to an existing directory.
+    """
+    root = Path(root).expanduser().resolve()
+    if not root.is_dir():
+        raise NotADirectoryError(f"set_project_root: '{root}' is not an existing directory.")
+
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+    if chdir and Path(os.getcwd()).resolve() != root:
+        os.chdir(root)
+        if verbose:
+            print(f">> set_project_root: {root} — added to sys.path, cwd changed.")
+    elif verbose:
+        print(f">> set_project_root: {root} — added to sys.path.")
+
+    return root
