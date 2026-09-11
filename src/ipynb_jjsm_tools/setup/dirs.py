@@ -1,7 +1,18 @@
 import os
 import sys
 from pathlib import Path
-from warnings import deprecated
+try:
+    from warnings import deprecated
+except ImportError:
+    import functools, warnings as _warnings
+    def deprecated(message):
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                _warnings.warn(message, DeprecationWarning, stacklevel=2)
+                return func(*args, **kwargs)
+            return wrapper
+        return decorator
 
 def create_dirs(path, data="data", output="out", cache="cache"):
     path = Path(path)
