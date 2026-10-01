@@ -52,6 +52,16 @@ jjsm-setup --venv myenv --extra full  # same, in ./myenv, with the full extra
 jjsm-setup --no-tex                   # skip the LaTeX step
 ```
 
+If you get `jjsm-setup: command not found`, pip probably put the command in a
+folder that isn't on your `PATH` (usually `~/.local/bin` after a `--user` install).
+You can run it through Python instead:
+
+```bash
+python -m ipynb_jjsm_tools.setup.run --help
+# or add pip's script folder to PATH:
+export PATH="$HOME/.local/bin:$PATH"
+```
+
 `--venv` needs [uv](https://docs.astral.sh/uv/getting-started/installation/) and
 reuses the venv if it already exists. The LaTeX step runs the command from
 `lab.setup.tex_install_command()` (Homebrew BasicTeX on macOS, MiKTeX on Windows,
