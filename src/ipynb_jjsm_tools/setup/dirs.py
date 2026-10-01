@@ -1,18 +1,23 @@
 import os
 import sys
 from pathlib import Path
+
 try:
     from warnings import deprecated
 except ImportError:
     import functools, warnings as _warnings
+
     def deprecated(message):
         def decorator(func):
             @functools.wraps(func)
             def wrapper(*args, **kwargs):
                 _warnings.warn(message, DeprecationWarning, stacklevel=2)
                 return func(*args, **kwargs)
+
             return wrapper
+
         return decorator
+
 
 def create_dirs(path, data="data", output="out", cache="cache"):
     path = Path(path)
@@ -83,13 +88,17 @@ def add_project_root(start=None, marker=".root_ident", verbose=True, chdir=True)
             if chdir and Path(os.getcwd()).resolve() != parent:
                 os.chdir(parent)
                 if verbose:
-                    print(f">> add_project_root: found '{marker}' at {parent} — cwd changed to it.")
+                    print(
+                        f">> add_project_root: found '{marker}' at {parent} — cwd changed to it."
+                    )
             elif verbose:
                 print(f">> add_project_root: found '{marker}' at {parent}.")
             return parent
 
     if verbose:
-        print(f">> add_project_root: no usable '{marker}' found. Checked, from {start}:")
+        print(
+            f">> add_project_root: no usable '{marker}' found. Checked, from {start}:"
+        )
         for parent, present in trace:
             flag = "found (broken symlink?)" if present else ""
             print(f"   [{'x' if present else ' '}] {parent}  {flag}")
@@ -134,7 +143,9 @@ def set_project_root(root, verbose=True, chdir=True):
     """
     root = Path(root).expanduser().resolve()
     if not root.is_dir():
-        raise NotADirectoryError(f"set_project_root: '{root}' is not an existing directory.")
+        raise NotADirectoryError(
+            f"set_project_root: '{root}' is not an existing directory."
+        )
 
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))

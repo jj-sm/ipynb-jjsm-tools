@@ -11,7 +11,9 @@ Utility tools for Jupyter notebooks and data workflows mainly build on top of co
 - Supports environment-based secrets (.env)  
 - Install directly from GitHub (no PyPI needed)
 - Aperture Photometry tools
-- Default Plot Styles support
+- Default Plot Styles support (LaTeX or mathtext, with Computer Modern fonts and automatic fallback)
+- Figure sizing in cm and font sizes matched to your LaTeX document
+- `jjsm-setup` command to create a venv and install LaTeX
 - Plots:
   - Color -- mag diagrams
   - HR diagram
@@ -33,9 +35,29 @@ uv pip install git+https://github.com/jj-sm/ipynb-jjsm-tools.git
 ```
 
 ### Install Recommended Packages
+Extras: `notebook` (Jupyter), `lab` (astro tooling), `full` (both).
 ```bash
-uv pip install "git+https://github.com/jj-sm/ipynb-jjsm-tools.git[lab,notebook,full]"
+uv pip install "ipynb-jjsm-tools[full] @ git+https://github.com/jj-sm/ipynb-jjsm-tools.git"
 ```
+
+### Post-install setup (`jjsm-setup`)
+Installing the package adds a `jjsm-setup` command that installs LaTeX for the
+plot styles and can optionally create a uv venv for you:
+
+```bash
+jjsm-setup                            # install LaTeX only
+jjsm-setup --extra lab                # add an extra to the current env, then install LaTeX
+jjsm-setup --venv                     # create ./.venv with uv, install the package there, then LaTeX
+jjsm-setup --venv myenv --extra full  # same, in ./myenv, with the full extra
+jjsm-setup --no-tex                   # skip the LaTeX step
+```
+
+`--venv` needs [uv](https://docs.astral.sh/uv/getting-started/installation/) and
+reuses the venv if it already exists. The LaTeX step runs the command from
+`lab.setup.tex_install_command()` (Homebrew BasicTeX on macOS, MiKTeX on Windows,
+apt/dnf/pacman on Linux) and may ask for your `sudo` password. On a machine where
+you don't have root (clusters, JupyterHub), use
+`conda install -c conda-forge texlive-core cm-super` instead.
 
 ---
 
@@ -62,7 +84,9 @@ uv pip install "git+https://github.com/jj-sm/ipynb-jjsm-tools.git[lab,notebook,f
 │   │   └── setup
 │   │       ├── __init__.py
 │   │       ├── dirs.py
-│   │       └── plot.py
+│   │       ├── logs.py
+│   │       ├── plot.py
+│   │       └── run.py        # jjsm-setup CLI
 ```
 
 ---
@@ -87,11 +111,70 @@ Make sure to add this to `.gitignore`:
 
 # Usage and setup
 
+## `setup` — project folders and paths
+
+```python
+import ipynb_jjsm_tools as lab
+
+lab.setup.set_project_root("~/path/to/project")  # add to sys.path and cd into it
+lab.setup.create_dirs(".")                       # creates data/, out/, cache/, notebooks/
+```
+
+`add_project_root()` (looks for a `.root_ident` marker file in parent folders) still
+works but is deprecated; use `set_project_root()` instead.
+
+## `setup` — plot style, LaTeX and figure sizes
+
+### `setup.activate_tex(enabled=True, serif=False, download_fonts=True, auto_fallback=True)`
+Applies the base plot style and sets up how all plot text is rendered:
+
+- If LaTeX works, it uses real LaTeX (`text.usetex`) with **CMU Bright** (sans,
+  the default) or **Computer Modern Roman** (`serif=True`).
+- Otherwise, or with `enabled=False`, it uses matplotlib's mathtext with the
+  matching CMU font. If the CMU fonts aren't installed, they're downloaded from
+  CTAN into the matplotlib cache (turn this off with `download_fonts=False`). If
+  that fails too, it uses DejaVu.
+- With `auto_fallback=True`, if a figure later fails to compile in LaTeX (for
+  example, a stray `&` or a missing package), that figure is redrawn with
+  mathtext and you get a `LaTeXFallbackWarning` showing the string that broke.
+  It works for `savefig`, Jupyter inline display and GUI windows.
+
+Returns `{"backend", "font", "text_font", "message"}`:
+
+```python
+status = lab.setup.activate_tex()            # CMU Bright
+status = lab.setup.activate_tex(serif=True)  # Computer Modern Roman
+print(status["message"])
+```
+
+If LaTeX is missing, `lab.setup.install_tex()` prints the install command for
+your OS, and `install_tex(run=True)` runs it (`full=True` installs the full
+distribution, which is several GB). `jjsm-setup` does the same thing from the
+shell.
+
+### `setup.size(width_cm, height_cm=None, *, aspect=3/4)` / `setup.cm_to_in(*values)`
+Figure sizes in centimetres, for matching an `\includegraphics[width=...]` in your report:
+
+```python
+fig, ax = plt.subplots(figsize=lab.setup.size(8))       # 8 cm wide, 6 cm tall
+fig, ax = plt.subplots(figsize=lab.setup.size(16, 5))   # 16 x 5 cm
+```
+
+### `setup.set_font_sizes(base=10, *, label=None, title=None, tick=None, legend=None)`
+Sets matplotlib font sizes (in points) to match your document's body text.
+Ticks and legend default to `base - 1`. Call it **after** `activate_tex()`,
+because `activate_tex()` resets the base style.
+
+```python
+lab.setup.activate_tex()
+lab.setup.set_font_sizes(11)
+```
+
 ## S3 Setup
 
 ```python
 import ipynb_jjsm_tools as lab
-lab.setup.create_dirs()
+lab.setup.create_dirs(".")
 
 # ------------ Usar en VSCode (Con .env) --------------
 # import os
@@ -317,9 +400,11 @@ it accepts the same x you're plotting.
 
 Clone the repo and install in editable mode:
 
-git clone https://github.com/jj-sm/ipynb-jjsm-tools.git  
-cd ipynb-jjsm-tools  
+```bash
+git clone https://github.com/jj-sm/ipynb-jjsm-tools.git
+cd ipynb-jjsm-tools
 uv pip install -e .
+```
 
 ---
 
