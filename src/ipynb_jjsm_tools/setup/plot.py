@@ -163,6 +163,7 @@ def ensure_cmu_fonts(families=("CMU Bright", "CMU Serif"), download=True):
         return True
 
     search_dirs = []
+    _add_user_tex_to_path()
     if shutil.which("kpsewhich"):
         hit = subprocess.run(
             ["kpsewhich", "cmunrm.otf"], capture_output=True, text=True
@@ -190,6 +191,22 @@ def ensure_cmu_fonts(families=("CMU Bright", "CMU Serif"), download=True):
 
 
 # LaTeX detection + activation
+# User-local TeX Live installed by install_tex() when there's no root
+_TINYTEX_DIR = Path.home() / (
+    "Library/TinyTeX" if platform.system() == "Darwin" else ".TinyTeX"
+)
+_TINYTEX_URL = "https://yihui.org/tinytex/install-bin-unix.sh"
+
+
+def _add_user_tex_to_path():
+    # Jupyter kernels often don't inherit ~/bin, where TinyTeX links its binaries
+    path = os.environ.get("PATH", "").split(os.pathsep)
+    for bindir in sorted(_TINYTEX_DIR.glob("bin/*")):
+        if (bindir / "latex").exists() and str(bindir) not in path:
+            os.environ["PATH"] = os.pathsep.join([str(bindir), *path])
+            return
+
+
 def _has_tex_package(pkg):
     if shutil.which("kpsewhich") is None:
         return False
@@ -198,6 +215,7 @@ def _has_tex_package(pkg):
 
 
 def _latex_toolchain_status(packages=()):
+    _add_user_tex_to_path()
     required = ["latex"]
     optional = ["dvipng", "dvisvgm", "gs"]
     missing_required = [cmd for cmd in required if shutil.which(cmd) is None]
@@ -440,17 +458,59 @@ _TL_PACKAGES = [
 ]
 
 
+def _can_sudo():
+    """True if we're root or can plausibly use sudo (so system package managers work)."""
+    if os.geteuid() == 0:  # e.g. Colab runs as root
+        return True
+    if shutil.which("sudo") is None:
+        return False
+    if subprocess.run(["sudo", "-n", "true"], capture_output=True).returncode == 0:
+        return True
+    import grp
+
+    groups = set()
+    for gid in os.getgroups():
+        try:
+            groups.add(grp.getgrgid(gid).gr_name)
+        except KeyError:  # LDAP/cluster groups without a local name
+            pass
+    return bool(groups & {"sudo", "wheel", "admin"})
+
+
+def _tinytex_tlmgr():
+    hits = sorted(_TINYTEX_DIR.glob("bin/*/tlmgr"))
+    return hits[0] if hits else None
+
+
+def _tinytex_command(full=False):
+    """User-local TeX Live (no root needed): https://yihui.org/tinytex/"""
+    pkgs = " ".join(_TL_PACKAGES)
+    tlmgr = _tinytex_tlmgr()
+    if tlmgr is not None:  # already installed; re-running the installer would wipe it
+        return f'"{tlmgr}" install {pkgs}'
+    if shutil.which("curl"):
+        fetch = f"curl -fsSL {_TINYTEX_URL}"
+    elif shutil.which("wget"):
+        fetch = f"wget -qO- {_TINYTEX_URL}"
+    else:
+        return "# Neither curl nor wget found; install TeX Live from https://tug.org/texlive/"
+    installer = "TINYTEX_INSTALLER=TinyTeX-2 " if full else ""
+    return f'{fetch} | {installer}sh && "{_TINYTEX_DIR}"/bin/*/tlmgr install {pkgs}'
+
+
 def tex_install_command(full=False):
     """
     Return a shell command that installs a TeX setup good enough for activate_tex().
     full=True installs the complete distribution instead (several GB).
+
+    Without root/sudo (clusters, Data Lab, JupyterHub) this installs TinyTeX into
+    your home directory instead of using the system package manager.
     """
     system = platform.system()
-    sudo = (
-        "" if system == "Windows" or os.geteuid() == 0 else "sudo "
-    )  # e.g. Colab runs as root
 
     if system == "Darwin":
+        if shutil.which("brew") is None:
+            return _tinytex_command(full)
         if full:
             return "brew install --cask mactex-no-gui"
         return (
@@ -464,27 +524,33 @@ def tex_install_command(full=False):
         return "winget install -e --id MiKTeX.MiKTeX && winget install -e --id ArtifexSoftware.GhostScript"
 
     # Linux
-    if shutil.which("apt-get"):
-        pkgs = (
-            "texlive-full"
-            if full
-            else "texlive-latex-extra texlive-fonts-extra cm-super dvipng fonts-cmu"
-        )
-        return f"{sudo}apt-get update && {sudo}apt-get install -y {pkgs}"
-    if shutil.which("dnf"):
-        pkgs = (
-            "texlive-scheme-full"
-            if full
-            else (
-                "texlive-scheme-basic " + " ".join(f"texlive-{p}" for p in _TL_PACKAGES)
+    if _tinytex_tlmgr() is not None:
+        return _tinytex_command(full)
+    if _can_sudo():
+        sudo = "" if os.geteuid() == 0 else "sudo "
+        if shutil.which("apt-get"):
+            pkgs = (
+                "texlive-full"
+                if full
+                else "texlive-latex-extra texlive-fonts-extra cm-super dvipng fonts-cmu"
             )
-        )
-        return f"{sudo}dnf install -y {pkgs}"
-    if shutil.which("pacman"):
-        return f"{sudo}pacman -S --needed texlive-latexextra texlive-fontsextra texlive-binextra"
-    if shutil.which("tlmgr"):
+            return f"{sudo}apt-get update && {sudo}apt-get install -y {pkgs}"
+        if shutil.which("dnf"):
+            pkgs = (
+                "texlive-scheme-full"
+                if full
+                else (
+                    "texlive-scheme-basic "
+                    + " ".join(f"texlive-{p}" for p in _TL_PACKAGES)
+                )
+            )
+            return f"{sudo}dnf install -y {pkgs}"
+        if shutil.which("pacman"):
+            return f"{sudo}pacman -S --needed texlive-latexextra texlive-fontsextra texlive-binextra"
+    tlmgr = shutil.which("tlmgr")
+    if tlmgr and os.access(Path(tlmgr).resolve().parent, os.W_OK):  # user-owned TeX Live
         return f"tlmgr install {' '.join(_TL_PACKAGES)}"
-    return "# No known package manager found; install TeX Live from https://tug.org/texlive/"
+    return _tinytex_command(full)
 
 
 def install_tex(run=False, full=False):
@@ -493,4 +559,5 @@ def install_tex(run=False, full=False):
     print(cmd)
     if run:
         subprocess.run(cmd, shell=True, check=True)
+        _add_user_tex_to_path()
     return cmd

@@ -63,11 +63,22 @@ export PATH="$HOME/.local/bin:$PATH"
 ```
 
 `--venv` needs [uv](https://docs.astral.sh/uv/getting-started/installation/) and
-reuses the venv if it already exists. The LaTeX step runs the command from
-`lab.setup.tex_install_command()` (Homebrew BasicTeX on macOS, MiKTeX on Windows,
-apt/dnf/pacman on Linux) and may ask for your `sudo` password. On a machine where
-you don't have root (clusters, JupyterHub), use
-`conda install -c conda-forge texlive-core cm-super` instead.
+reuses the venv if it already exists.
+
+The LaTeX step runs the command from `lab.setup.tex_install_command()`:
+
+| Machine | What gets installed |
+| --- | --- |
+| macOS with Homebrew | BasicTeX + the needed packages (asks for your password) |
+| Windows | MiKTeX + Ghostscript via `winget` |
+| Linux where you're root or can `sudo` | TeX Live via apt / dnf / pacman |
+| No root (Data Lab, clusters, JupyterHub), or macOS without Homebrew | [TinyTeX](https://yihui.org/tinytex/) in `~/.TinyTeX` (no root needed, a few hundred MB) |
+
+TinyTeX needs `perl` and either `curl` or `wget`. Re-running `jjsm-setup` doesn't
+reinstall it; it only adds any missing packages. You don't need to add TinyTeX to
+your `PATH` for notebooks, because `activate_tex()` finds it automatically. At the
+end, `jjsm-setup` checks that LaTeX works and exits with code 1 if it doesn't.
+Your plots still work without LaTeX; they just use mathtext.
 
 ---
 

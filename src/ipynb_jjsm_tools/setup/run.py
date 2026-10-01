@@ -56,20 +56,29 @@ def install_package(python: Path, extra: str) -> None:
     subprocess.run(cmd, check=True)
 
 
-def install_latex() -> None:
-    # TeX is installed system-wide, so it doesn't matter which env runs this
-    from .plot import install_tex
+def install_latex() -> bool:
+    # TeX is installed system-wide (or in ~/.TinyTeX), so it doesn't matter which env runs this
+    from .plot import _latex_toolchain_status, install_tex
 
     print("==> Installing LaTeX")
     try:
         install_tex(run=True)
-    except subprocess.CalledProcessError:
-        print(
-            "LaTeX install failed or needed sudo you don't have.\n"
-            "On a shared/managed system (clusters, Data Lab, JupyterHub), try instead:\n"
-            "    conda install -c conda-forge texlive-core cm-super\n"
-            "This needs no root and installs into your own conda env."
-        )
+    except subprocess.CalledProcessError as exc:
+        print(f"LaTeX install command failed (exit code {exc.returncode}).")
+
+    status = _latex_toolchain_status(["type1cm", "cmbright"])
+    if status["ok"]:
+        print(f"==> LaTeX ready: {shutil.which('latex')}")
+        return True
+    problems = status["missing_required"] + status["missing_packages"]
+    if not status["has_render_backend"]:
+        problems.append("dvipng/dvisvgm/gs")
+    print(
+        f"==> LaTeX is NOT ready (missing: {', '.join(problems)}).\n"
+        "    Plots still work: activate_tex() falls back to mathtext with CMU fonts.\n"
+        "    Run `jjsm-setup --no-tex` to skip this step."
+    )
+    return False
 
 
 def main(argv=None) -> None:
@@ -96,8 +105,9 @@ def main(argv=None) -> None:
         # The package is already installed here (this command comes from it); only add extras
         install_package(Path(sys.executable), args.extra)
 
+    tex_ok = True
     if not args.no_tex:
-        install_latex()
+        tex_ok = install_latex()
     else:
         print("==> Skipping LaTeX install (--no-tex)")
 
@@ -108,6 +118,8 @@ def main(argv=None) -> None:
             print(f"==> Done. Activate with: {venv_python.parent / 'activate.bat'}")
     else:
         print("==> Done.")
+    if not tex_ok:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
