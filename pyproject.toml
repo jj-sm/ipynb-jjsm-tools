@@ -2,7 +2,7 @@
 name = "ipynb-jjsm-tools"
 version = "0.3.5"
 description = "Utility tools for notebooks and data workflows"
-authors = [{name = "Juan José Sanchez-Medina"}]
+authors = [{name = "Juan José Sanchez Medina"}]
 readme = "README.md"
 requires-python = ">=3.10"
 
@@ -19,28 +19,73 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Jupyter itself
 notebook = [
     "ipykernel",
     "ipywidgets",
+    "ipympl",
     "notebook",
     "jupyterlab",
 ]
 
+# General astronomical data analysis / image processing
 lab = [
     "astroquery",
     "astroscrappy",
     "ccdproc",
     "reproject",
+    "regions",
     "sep",
     "scikit-image",
+    "scikit-learn",
+    "seaborn",
+    "pyvo",
+    "healpy",
+    "h5py",
+    "dask",
+    "numba",
+    "lmfit",
+    "emcee",
+    "uncertainties",
+    "specutils",
+    "spectral-cube",
+    "astroplan",
+]
+
+# Survey/archive access, visualization tools, and specialized dynamics/photometry packages
+science = [
+    "astro-datalab",
+    "sparclclient",
+    "antares-client",
+    "unTimely-Catalog-explorer",
+    "glue-core",
+    "glueviz",
+    "ginga",
+    "jdaviz",
+    "ipyaladin",
+    "mocpy",
+    "ndcube",
+    "gwcs",
+    "asdf",
+    "asdf-astropy",
+    "batman-package",
+    "rebound",
+    "radio-beam",
+    "synphot",
+    "mpdaf",
+    "ppxf",
+    "pafit",
+    "vorbin",
+    "plotbin",
+    "gatspy",
 ]
 
 full = [
-    "ipynb-jjsm-tools[notebook,lab]",
+    "ipynb-jjsm-tools[notebook,lab,science]",
 ]
 
 [project.scripts]
-jjsm-setup = "ipynb_jjsm_tools.setup.run:main"
+jjsm-setup = "ipynb_jjsm_tools.setup_env:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
