@@ -26,39 +26,35 @@ notebook = [
     "jupyterlab",
 ]
 
-# Core astropy stack needed by ipynb_jjsm_tools.photometry
-astro = [
-    "astropy",
-    "photutils",
-]
-
-# General astronomical data analysis / image processing
+# General-purpose scientific computing (physics labs, EM, etc. — no astronomy)
 lab = [
-    "ipynb-jjsm-tools[astro]",
-    "astroquery",
-    "astroscrappy",
-    "ccdproc",
-    "reproject",
-    "regions",
-    "sep",
     "scikit-image",
     "scikit-learn",
     "seaborn",
-    "pyvo",
-    "healpy",
     "h5py",
     "dask",
     "numba",
     "lmfit",
     "emcee",
     "uncertainties",
+]
+
+# Everything astronomy: core astropy stack (needed by ipynb_jjsm_tools.photometry),
+# data analysis/image processing, survey/archive access, and specialized packages
+astro = [
+    "astropy",
+    "photutils",
+    "astroquery",
+    "astroscrappy",
+    "ccdproc",
+    "reproject",
+    "regions",
+    "sep",
+    "pyvo",
+    "healpy",
     "specutils",
     "spectral-cube",
     "astroplan",
-]
-
-# Survey/archive access, visualization tools, and specialized dynamics/photometry packages
-science = [
     "astro-datalab",
     "sparclclient",
     "antares-client",
@@ -86,7 +82,7 @@ science = [
 ]
 
 full = [
-    "ipynb-jjsm-tools[notebook,astro,lab,science]",
+    "ipynb-jjsm-tools[notebook,lab,astro]",
 ]
 
 [project.scripts]
