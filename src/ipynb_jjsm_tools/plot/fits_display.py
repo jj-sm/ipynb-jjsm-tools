@@ -78,7 +78,7 @@ def plot_image(
     fig, ax = plt.subplots(figsize=figsize, subplot_kw=subplot_kw)
 
     major_tick_dir = "in" if axes_in else "out"
-    minor_tick_dir = "out"
+    minor_tick_dir = major_tick_dir
 
     if wcs is not None:
         ax.coords[0].set_ticks(direction=major_tick_dir)
