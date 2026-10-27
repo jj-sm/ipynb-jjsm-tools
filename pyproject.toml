@@ -7,13 +7,11 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 dependencies = [
-    "astropy",
     "cmcrameri",
     "fsspec",
     "matplotlib",
     "numpy",
     "pandas",
-    "photutils",
     "polars",
     "scipy",
 ]
@@ -28,8 +26,15 @@ notebook = [
     "jupyterlab",
 ]
 
+# Core astropy stack needed by ipynb_jjsm_tools.photometry
+astro = [
+    "astropy",
+    "photutils",
+]
+
 # General astronomical data analysis / image processing
 lab = [
+    "ipynb-jjsm-tools[astro]",
     "astroquery",
     "astroscrappy",
     "ccdproc",
@@ -81,7 +86,7 @@ science = [
 ]
 
 full = [
-    "ipynb-jjsm-tools[notebook,lab,science]",
+    "ipynb-jjsm-tools[notebook,astro,lab,science]",
 ]
 
 [project.scripts]
